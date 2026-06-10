@@ -378,6 +378,260 @@ void backtracking(int n, int capacity, const int weights[],
 
 /* ========================== 主函数 ========================== */
 
+/* ========================= 排序算法 ========================= */
+/* 全局比较计数器 */
+static long long g_cmps = 0;
+
+static void reset_counter(void) { g_cmps = 0; }
+static long long get_counter(void) { return g_cmps; }
+
+/* ========================= 1. 冒泡排序 ========================= */
+
+/*
+ * 冒泡排序 (Bubble Sort)
+ *
+ * 原理：
+ *   重复遍历待排序序列，依次比较相邻元素，若逆序则交换。
+ *   每一轮遍历将当前未排序部分的最大元素"冒泡"到正确位置。
+ *   优化：若某轮未发生交换，说明已有序，提前终止。
+ *
+ * 时间复杂度：最好 O(n)，最坏 O(n²)，平均 O(n²)
+ * 空间复杂度：O(1)
+ * 稳定性：稳定
+ */
+void bubble_sort(int arr[], int n, int out[])
+{
+    reset_counter();
+    for (int i = 0; i < n; i++) out[i] = arr[i];
+
+    for (int i = 0; i < n - 1; i++) {
+        int swapped = 0;
+        for (int j = 0; j < n - 1 - i; j++) {
+            g_cmps++;
+            if (out[j] > out[j + 1]) {
+                int tmp = out[j]; out[j] = out[j + 1]; out[j + 1] = tmp;
+                swapped = 1;
+            }
+        }
+        if (!swapped) break;
+    }
+}
+
+/* ========================= 2. 合并排序 ========================= */
+
+/*
+ * 合并排序 (Merge Sort)
+ *
+ * 原理（分治法）：
+ *   1. 分解：将序列递归地分成两半，直到子序列长度为 1
+ *   2. 合并：将两个有序子序列合并成一个有序序列
+ *
+ * 时间复杂度：最好/最坏/平均均为 O(n log n)
+ * 空间复杂度：O(n)（临时数组）
+ * 稳定性：稳定
+ *
+ * 子问题规模：每次递归调用时记录当前子数组长度
+ */
+
+#define MAX_SUB  2000000
+static int g_sub[MAX_SUB];
+static int g_subn = 0;
+
+static void sub_clear(void) { g_subn = 0; }
+static int  sub_count(void) { return g_subn; }
+
+static void sub_record(int sz) {
+    if (g_subn < MAX_SUB) g_sub[g_subn++] = sz;
+}
+
+/* 合并两个有序子数组 L[left..mid] 和 R[mid+1..right] */
+static void merge(int a[], int L, int M, int R)
+{
+    int n1 = M - L + 1, n2 = R - M;
+    int *Larr = (int *)malloc(n1 * sizeof(int));
+    int *Rarr = (int *)malloc(n2 * sizeof(int));
+    for (int i = 0; i < n1; i++) Larr[i] = a[L + i];
+    for (int j = 0; j < n2; j++) Rarr[j] = a[M + 1 + j];
+    int i = 0, j = 0, k = L;
+    while (i < n1 && j < n2) {
+        g_cmps++;
+        if (Larr[i] <= Rarr[j]) a[k++] = Larr[i++];
+        else a[k++] = Rarr[j++];
+    }
+    while (i < n1) a[k++] = Larr[i++];
+    while (j < n2) a[k++] = Rarr[j++];
+    free(Larr); free(Rarr);
+}
+
+static void merge_rec(int a[], int L, int R)
+{
+    sub_record(R - L + 1);
+    if (L < R) {
+        int M = L + (R - L) / 2;
+        merge_rec(a, L, M);
+        merge_rec(a, M + 1, R);
+        merge(a, L, M, R);
+    }
+}
+
+void merge_sort(int arr[], int n, int out[])
+{
+    reset_counter();
+    sub_clear();
+    for (int i = 0; i < n; i++) out[i] = arr[i];
+    merge_rec(out, 0, n - 1);
+}
+
+/* ========================= 3. 快速排序 ========================= */
+
+/*
+ * 快速排序 (Quick Sort)
+ *
+ * 原理（分治法）：
+ *   1. 选择基准元素 (pivot)
+ *   2. 划分：将序列重新排列，使 ≤ pivot 的元素在左侧，
+ *       > pivot 的元素在右侧
+ *   3. 递归：对左右两个子序列分别递归排序
+ *
+ * 时间复杂度：平均 O(n log n)，最坏 O(n²)（输入已有序时）
+ * 空间复杂度：O(log n)（递归栈）
+ * 稳定性：不稳定
+ *
+ * 本实现采用"三数取中"法选择 pivot，避免最坏情况。
+ */
+
+/* Lomuto 划分（返回 pivot 最终位置） */
+static int partition(int a[], int lo, int hi)
+{
+    /* 三数取中：对 a[lo], a[mid], a[hi] 排序，用 a[hi] 作 pivot */
+    int mid = lo + (hi - lo) / 2;
+    if (a[hi] < a[lo]) { int t = a[lo]; a[lo] = a[hi]; a[hi] = t; }
+    if (a[mid] < a[lo]) { int t = a[lo]; a[lo] = a[mid]; a[mid] = t; }
+    if (a[hi] < a[mid]) { int t = a[mid]; a[mid] = a[hi]; a[hi] = t; }
+    int pivot = a[hi];
+    int i = lo - 1;
+    for (int j = lo; j < hi; j++) {
+        g_cmps++;
+        if (a[j] <= pivot) {
+            i++;
+            int t = a[i]; a[i] = a[j]; a[j] = t;
+        }
+    }
+    int t = a[i + 1]; a[i + 1] = a[hi]; a[hi] = t;
+    return i + 1;
+}
+
+static void quick_rec(int a[], int lo, int hi)
+{
+    sub_record(hi - lo + 1);
+    if (lo < hi) {
+        int p = partition(a, lo, hi);
+        quick_rec(a, lo, p - 1);
+        quick_rec(a, p + 1, hi);
+    }
+}
+
+void quick_sort(int arr[], int n, int out[])
+{
+    reset_counter();
+    sub_clear();
+    for (int i = 0; i < n; i++) out[i] = arr[i];
+    quick_rec(out, 0, n - 1);
+}
+
+/* ========================= 排序算法演示 ========================= */
+
+/* 验证数组是否已排序（升序） */
+static int sorted_ok(int a[], int n)
+{
+    for (int i = 0; i < n - 1; i++)
+        if (a[i] > a[i + 1]) return 0;
+    return 1;
+}
+
+/*
+ * 演示三种排序算法
+ *   输入：arr[] 原始数组，n 数组长度
+ *   输出：各算法的比较次数、执行时间、正确性验证
+ */
+void demo_sorting(int arr[], int n)
+{
+    int *out = (int *)malloc(n * sizeof(int));
+    if (!out) { printf("内存分配失败!\n"); return; }
+
+    printf("╔════════════════════════════════════════════════════════════╗\n");
+    printf("║            排序算法对比演示 (n=%d)                    ║\n", n);
+    printf("╚════════════════════════════════════════════════════════════╝\n\n");
+
+    /* ----- 冒泡排序 ----- */
+    clock_t t0 = clock();
+    bubble_sort(arr, n, out);
+    clock_t t1 = clock();
+    double ms = (double)(t1 - t0) * 1000.0 / CLOCKS_PER_SEC;
+
+    printf("【冒泡排序 (Bubble Sort)】\n");
+    printf("  比较次数：%lld\n", get_counter());
+    printf("  执行时间：%.4f ms\n", ms);
+    printf("  正确性：  %s\n", sorted_ok(out, n) ? "✓ 通过" : "✗ 失败");
+    if (n <= 30) {
+        printf("  排序结果（前20个）：");
+        int show = n < 20 ? n : 20;
+        for (int i = 0; i < show; i++) printf("%d ", out[i]);
+        if (n > 20) printf("...");
+        printf("\n");
+    }
+    printf("\n");
+
+    /* ----- 合并排序 ----- */
+    t0 = clock();
+    merge_sort(arr, n, out);
+    t1 = clock();
+    ms = (double)(t1 - t0) * 1000.0 / CLOCKS_PER_SEC;
+
+    printf("【合并排序 (Merge Sort)】\n");
+    printf("  比较次数：%lld\n", get_counter());
+    printf("  执行时间：%.4f ms\n", ms);
+    printf("  子问题调用次数：%d\n", sub_count());
+    printf("  正确性：  %s\n", sorted_ok(out, n) ? "✓ 通过" : "✗ 失败");
+    if (n <= 30) {
+        printf("  排序结果（前20个）：");
+        int show = n < 20 ? n : 20;
+        for (int i = 0; i < show; i++) printf("%d ", out[i]);
+        if (n > 20) printf("...");
+        printf("\n");
+    }
+    printf("\n");
+
+    /* ----- 快速排序 ----- */
+    t0 = clock();
+    quick_sort(arr, n, out);
+    t1 = clock();
+    ms = (double)(t1 - t0) * 1000.0 / CLOCKS_PER_SEC;
+
+    printf("【快速排序 (Quick Sort)】\n");
+    printf("  比较次数：%lld\n", get_counter());
+    printf("  执行时间：%.4f ms\n", ms);
+    printf("  子问题调用次数：%d\n", sub_count());
+    printf("  正确性：  %s\n", sorted_ok(out, n) ? "✓ 通过" : "✗ 失败");
+    if (n <= 30) {
+        printf("  排序结果（前20个）：");
+        int show = n < 20 ? n : 20;
+        for (int i = 0; i < show; i++) printf("%d ", out[i]);
+        if (n > 20) printf("...");
+        printf("\n");
+    }
+    printf("\n");
+
+    printf("═══════════════════════════════════════════════════════════════\n");
+    printf("算法对比总结：\n");
+    printf("  冒泡排序：  时间 O(n²)，     空间 O(1)，     稳定\n");
+    printf("  合并排序：  时间 O(n log n)，空间 O(n)，     稳定\n");
+    printf("  快速排序：  平均 O(n log n)，最坏 O(n²)，空间 O(log n)，不稳定\n");
+    printf("═══════════════════════════════════════════════════════════════\n\n");
+
+    free(out);
+}
+
 int main(void) {
     /* ---------- 测试用例 ---------- */
     int    n        = 5;
